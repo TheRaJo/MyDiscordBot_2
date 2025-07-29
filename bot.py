@@ -1,7 +1,9 @@
 import discord
 import sys
-import random 
-import datetime 
+import random
+import datetime
+import asyncio
+import imap_handler 
 
 COMMAND_PREFIX = "!"
 TOKEN_FILE = "token.txt"
@@ -78,27 +80,33 @@ async def on_message(message):
         await message.channel.send(response)
 
 async def periodic_email_check():
-    NOTIFICATION_CHANNEL_ID = 847443762967216128
+   
+    NOTIFICATION_CHANNEL_ID = 847443762967216128 
     await client.wait_until_ready()
     notification_channel = client.get_channel(NOTIFICATION_CHANNEL_ID)
+
     if not notification_channel:
-        print(f"[ERROR] Notification channel with ID {NOTIFICATION_CHANNEL_ID} not found.")
+        print(f"[HIBA] Az értesítési csatorna ID-vel {NOTIFICATION_CHANNEL_ID} nem található.")
         return
+
     while not client.is_closed():
         try:
-            print("Checking for new emails...")
-        new_email_subjects = ["Subject 1: Important Update", "Subject 2: Your Order Confirmation"]
-        if new_email_subjects:
+            print("Új e-mailek ellenőrzése...")
+           
+            new_email_subjects = await imap_handler.check_for_new_emails()
+
+            if new_email_subjects:
                 for subject in new_email_subjects:
                     message_content = f"Új email érkezett: **{subject}**"
                     await notification_channel.send(message_content)
-                    print(f"Sent notification for subject: {subject}")
+                    print(f"Értesítés elküldve a tárgyról: {subject}")
             else:
-                print("No new emails found.")
+                print("Nincs új e-mail.")
 
         except Exception as e:
-            print(f"[ERROR] An error occurred during periodic email check: {e}")
-    await asyncio.sleep(60) #sec
+            print(f"[HIBA] Hiba történt a periodikus e-mail ellenőrzés során: {e}")
+        await asyncio.sleep(60)  #sec
+
 client.loop.create_task(periodic_email_check())
 
 try:
