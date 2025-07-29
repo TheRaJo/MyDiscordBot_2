@@ -77,6 +77,30 @@ async def on_message(message):
         )
         await message.channel.send(response)
 
+async def periodic_email_check():
+    NOTIFICATION_CHANNEL_ID = 847443762967216128
+    await client.wait_until_ready()
+    notification_channel = client.get_channel(NOTIFICATION_CHANNEL_ID)
+    if not notification_channel:
+        print(f"[ERROR] Notification channel with ID {NOTIFICATION_CHANNEL_ID} not found.")
+        return
+    while not client.is_closed():
+        try:
+            print("Checking for new emails...")
+        new_email_subjects = ["Subject 1: Important Update", "Subject 2: Your Order Confirmation"]
+        if new_email_subjects:
+                for subject in new_email_subjects:
+                    message_content = f"Új email érkezett: **{subject}**"
+                    await notification_channel.send(message_content)
+                    print(f"Sent notification for subject: {subject}")
+            else:
+                print("No new emails found.")
+
+        except Exception as e:
+            print(f"[ERROR] An error occurred during periodic email check: {e}")
+    await asyncio.sleep(60) #sec
+client.loop.create_task(periodic_email_check())
+
 try:
     client.run(DISCORD_TOKEN)
 except discord.errors.LoginFailure:
