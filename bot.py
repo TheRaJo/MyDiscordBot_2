@@ -125,6 +125,29 @@ async def on_message(message):
         dobas = random.randint(1, 6)
         await message.channel.send(f'{message.author.mention} a te dobásod: **{dobas}**!')
 
+    if command == 'tagok':
+        guild = message.guild
+        if guild is None:
+            await message.channel.send("Ez a parancs csak szerveren belül használható.")
+            return
+
+        tag_role = discord.utils.get(guild.roles, name="Tag")
+        if tag_role is None:
+            await message.channel.send("Nem található 'Tag' nevű rang a szerveren.")
+            return
+
+        members_with_tag_role = []
+        for member in guild.members:
+            if tag_role in member.roles:
+                members_with_tag_role.append(member.display_name)
+
+        if members_with_tag_role:
+            response = "**Tag ranggal rendelkező felhasználók:**\n"
+            response += "\n".join(members_with_tag_role)
+            await message.channel.send(response)
+        else:
+            await message.channel.send("Jelenleg nincs 'Tag' ranggal rendelkező felhasználó.")
+
     if command == 'ping':
         time_taken = datetime.datetime.now(datetime.timezone.utc) - message.created_at
         message_latency = round(time_taken.total_seconds() * 1000)
@@ -142,6 +165,7 @@ async def on_message(message):
             f"`{COMMAND_PREFIX}hello` - A bot köszön neked.\n"
             f"`{COMMAND_PREFIX}kocka` - Dob egy hatoldalú kockával.\n"
             f"`{COMMAND_PREFIX}ping` - Megméri a bot válaszidejét.\n"
+            f"`{COMMAND_PREFIX}tagok` - Kilistázza az összes 'Tag' rangú felhasználót.\n"
             f"`{COMMAND_PREFIX}segitseg` - Megjeleníti ezt az üzenetet."
         )
         await message.channel.send(response)
