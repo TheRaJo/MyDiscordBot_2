@@ -28,6 +28,8 @@ DISCORD_TOKEN = load_token()
 
 intents = discord.Intents.default()
 intents.message_content = True
+intents.members = True
+intents.reactions = True
 
 client = discord.Client(intents=intents)
 
@@ -36,6 +38,71 @@ async def on_ready():
     
     print(f'Sikeresen bejelentkezve mint: {client.user}')
     print('------')
+
+@client.event
+async def on_member_join(member):
+    """
+    Eseménykezelő, amikor egy új felhasználó csatlakozik a szerverhez.
+    Üdvözlő üzenetet küld és felszólítja a szabályzat elolvasására.
+    """
+    global rules_message_id # Hozzáférés a globális változóhoz
+
+    # Keresd meg a csatornát, ahová az üdvözlő üzenetet küldeni szeretnéd.
+    # Használhatsz egy konkrét csatorna ID-t, vagy megpróbálhatod megtalálni a "welcome" vagy "rules" nevű csatornát.
+    # Ha nincs ilyen, akkor a szerver alapértelmezett rendszerüzenet csatornáját használja.
+    welcome_channel = discord.utils.get(member.guild.channels, name="welcome") or \
+                      discord.utils.get(member.guild.channels, name="szabalyzat") or \
+                      member.guild.system_channel
+
+    if welcome_channel:
+        welcome_message = (
+            f"Üdvözlünk, {member.mention}, a(z) **{member.guild.name}** szerveren!\n"
+            f"Kérlek, olvasd el a <#YOUR_RULES_CHANNEL_ID> csatornán található szabályzatunkat, és fogadd el a reakcióval, "
+            f"hogy hozzáférj a többi csatornához."
+        )
+        # Cseréld le a <#YOUR_RULES_CHANNEL_ID> helyére a szabályzat csatornád tényleges ID-jét.
+        # Például: f"Kérlek, olvasd el a <#123456789012345678> csatornán található szabályzatunkat..."
+        sent_message = await welcome_channel.send(welcome_message)
+        rules_message_id = sent_message.id # Tároljuk az elküldött üzenet ID-jét
+        print(f"Üdvözlő üzenet elküldve {member.name} felhasználónak a(z) {welcome_channel.name} csatornára. Üzenet ID: {rules_message_id}")
+    else:
+        print(f"[HIBA] Nem található üdvözlő csatorna a(z) {member.guild.name} szerveren.")
+
+@client.event
+async def on_raw_reaction_add(payload):
+    """
+    Eseménykezelő, amikor egy felhasználó reakciót ad egy üzenethez.
+    Ez akkor is működik, ha az üzenet nincs a bot gyorsítótárában.
+    """
+    if payload.guild_id is None: # Csak szervereken belüli reakciókat kezelünk
+        return
+
+    # Ellenőrizzük, hogy a reakció a szabályzat üzenetre történt-e
+    if payload.message_id == rules_message_id:
+        guild = client.get_guild(payload.guild_id)
+        if guild is None:
+            return
+
+        member = guild.get_member(payload.user_id)
+        if member is None or member.bot: # Ne adjunk rangot a botoknak
+            return
+
+       
+        if str(payload.emoji) == '👍':
+            # Keresd meg a "Tag" nevű rangot
+            role = discord.utils.get(guild.roles, name="Tag")
+            if role:
+                if role not in member.roles: # Csak akkor adjuk hozzá, ha még nincs meg neki
+                    await member.add_roles(role)
+                    print(f"'{member.name}' felhasználó megkapta a '{role.name}' rangot a szabályzat elfogadásáért.")
+                else:
+                    print(f"'{member.name}' felhasználó már rendelkezik a '{role.name}' ranggal.")
+            else:
+                print(f"[HIBA] Nem található 'Tag' nevű rang a(z) {guild.name} szerveren. Kérlek, hozd létre!")
+        else:
+            print(f"Nem a várt emoji ({payload.emoji}) a szabályzat üzenetre.")
+    # else:
+    #     print(f"Reakció egy másik üzenetre: {payload.message_id}")
 
 @client.event
 async def on_message(message):
